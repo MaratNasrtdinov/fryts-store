@@ -12,14 +12,14 @@ from models import *
 from kbs import main_kb, past_suho_kb, kb_prod_page, to_main_menu_kb, in_cart_kb,\
     admin_change, first_start, checkout_kb, custom_order_first_kb, final_kb
 
-from config import TOKEN, admins, manager_id
+from config import TOKEN, ADMINS, MANAGER
 
 bot = Bot(token=TOKEN)
 storage = MemoryStorage()
 dp = Dispatcher(bot=bot, storage=storage)
 
-admins = admins
-manager_id = manager_id
+ADMINS = ADMINS
+MANAGER = MANAGER
 
 
 with db:
@@ -59,8 +59,9 @@ class MainStates(StatesGroup):
     admin_change_price = State()
     admin_change_description = State()
 
+
 @dp.message_handler(commands=['start'])
-async def first_cmd_start(msg:types.Message, state: FSMContext):
+async def first_cmd_start(msg: types.Message, state: FSMContext):
     await msg.answer('Привет!\n'
                      'Компания "FRYTS" - это про пользу в каждом кусочке.\n'
                      'В последнее время мы всё больше следим за здоровьем и фигурой, но как же сложно отказаться от любимых сладостей.'
@@ -88,7 +89,6 @@ async def in_main_menu(msg: types.Message, state: FSMContext) -> None:
     await cmd_start(msg, state)
 
 
-#обработки в выход пастилы или сухофрукта
 @dp.message_handler(text=['Каталог📗', 'Назад к каталогу⬅'], state=MainStates)
 async def cmd_catalog(msg: types.Message, state: FSMContext) -> None:
     await bot.send_photo(chat_id=msg.from_user.id, photo="https://chudo-prirody.com/uploads/posts/2021-08/1628909188_6-p-khitrii-kot-foto-6.jpg",
@@ -116,9 +116,11 @@ async def catalog_past(msg: types.Message, state: FSMContext):
 async def catalog_past_dup(callback: CallbackQuery, state: FSMContext):
     await catalog_past(msg=callback, state=state)
 
+
 @dp.message_handler(text=['Индивидуальный заказ📦'], state=MainStates)
 async def custom_order(msg: types.Message):
     await msg.answer('Уверены что хотите сделать индивидуальный заказ?', reply_markup=custom_order_first_kb)
+
 
 @dp.message_handler(text=['Да, сделать индивидуальный заказ✅'], state=MainStates)
 async def custom_order(msg: types.Message):
@@ -126,11 +128,13 @@ async def custom_order(msg: types.Message):
     username = msg.from_user.username
     if username is None:
         username = 'None'
-    await bot.send_message(chat_id=manager_id,
+    await bot.send_message(chat_id=MANAGER,
                            text=f'Этот пользователь магазина решил сделать индивидуальный заказ!\n\n'
                                 f'Имя пользователя: @{username}\nПолное имя: {msg.from_user.full_name}\nid: {msg.from_user.id}')
 
-#страница продукта
+# Cтраница продукта
+
+
 @dp.callback_query_handler(state=MainStates.origin)
 async def prod_page(callback: CallbackQuery, state=FSMContext):
     price_past_dict = upd_pd()
@@ -147,15 +151,18 @@ async def prod_page(callback: CallbackQuery, state=FSMContext):
             data['button_value'] = 1
         #также обработка ошибки ненайденного фото
         try:
-            await bot.send_photo(chat_id=callback.from_user.id,
+            await bot.send_photo(
+                             chat_id=callback.from_user.id,
                              caption='{0}\n\n🍏{1}\n\n🍏Количество на складе: {2}\n🍏Цена: {3}р.'.format(data['product'],
                                                                             price_past_dict[data['product']]['Описание'],
                                                                             price_past_dict[data['product']]['Количество'],
                                                                             price_past_dict[data['product']]['Цена']),
                              photo=photo,
-                             reply_markup=kb_prod_page(data['button_value']))
+                             reply_markup=kb_prod_page(data['button_value'])
+            )
         except Exception:
-            await bot.send_message(chat_id=callback.from_user.id,
+            await bot.send_message(
+                                 chat_id=callback.from_user.id,
                                  text='{0}\n\n🍏{1}\n\n🍏Количество на складе: {2}\n🍏Цена: {3}р.'.format(data['product'],
                                                                             price_past_dict[data['product']]['Описание'],
                                                                             price_past_dict[data['product']]['Количество'],
@@ -164,7 +171,7 @@ async def prod_page(callback: CallbackQuery, state=FSMContext):
 
 
 @dp.callback_query_handler(Text(startswith='butt_'), state=MainStates.prod_page)
-async def somefunc(callback, state:FSMContext):
+async def somefunc(callback, state: FSMContext):
     button_value = callback.data.split('_')[1]
     price_past_dict = upd_pd()
     async with state.proxy() as data:
@@ -209,7 +216,6 @@ async def add_to_cart(callback: CallbackQuery, state: FSMContext):
         await catalog_past(msg=callback, state=state)
 
 
-
 @dp.message_handler(text=['Корзина🛒', 'Назад к корзине'], state=MainStates)
 async def cart(msg: types.Message):
     await msg.answer('🛒Ваша корзина:')
@@ -234,6 +240,7 @@ async def clean_cart(msg:types.Message):
     Cart.delete().where(Cart.user_id.in_(del_list)).execute()
     await msg.answer('Коризна очищена✅')
 
+
 async def remove_prods_kb(msg):
     remove_prods = ReplyKeyboardMarkup()
     cartt = Cart.select().where(Cart.user_id == msg.from_user.id)
@@ -245,7 +252,7 @@ async def remove_prods_kb(msg):
 
 
 @dp.message_handler(text=['Удалить элементы❌'], state=MainStates)
-async def delete_elems_in_cart(msg:types.Message):
+async def delete_elems_in_cart(msg: types.Message):
     await msg.answer('Какие элементы вы хотите удалить из корзины?', reply_markup= await remove_prods_kb(msg))
 
 
@@ -262,26 +269,27 @@ async def deleting_elem(msg: types.Message):
 async def checkout_one(msg: types.Message, state:FSMContext):
     actual_catalog = upd_pp()
     cartik = Cart.select().where(Cart.user_id == msg.from_user.id)
-    cart =[i.product for i in cartik]
+    cart = [i.product for i in cartik]
 
     if not cart:
         await msg.answer('Корзина пуста')
     else:
         if set(cart).issubset(actual_catalog):
-            await msg.answer('Вы уверены что хотите оформить заказ?\nПри оформлении заказа, информация о нём уйдёт менеджеру, который позднее свяжется с вами',
-                         reply_markup=checkout_kb)
+            await msg.answer(
+                'Вы уверены что хотите оформить заказ?\n'
+                'При оформлении заказа, информация о нём уйдёт менеджеру, который позднее свяжется с вами',
+                reply_markup=checkout_kb
+            )
             await state.set_state(MainStates.checkout)
         else:
             await msg.answer('Кажется некоторые товары в вашей корзине потеряли свою актуальность.\n'
                              'Пожалуйста очистите корзину и выберите товары для покупки ещё раз')
 
 
-
-
 @dp.message_handler(text=['Оформить✅'], state=MainStates.checkout)
 async def checkout_two(msg: types.Message):
     #приходит админу
-    await bot.send_message(chat_id=manager_id, text='Новый заказ❗')
+    await bot.send_message(chat_id=MANAGER, text='Новый заказ❗')
 
     cartik = Cart.select().where(Cart.user_id == msg.from_user.id)
     sum_price = [i.price for i in cartik]
@@ -291,9 +299,9 @@ async def checkout_two(msg: types.Message):
 
     for cart in cartik:
         if cart.quantity > 1:
-            await bot.send_message(chat_id=manager_id, text='🍏({0}) {1}: {2}р.'.format(cart.quantity, cart.product, cart.price))
+            await bot.send_message(chat_id=MANAGER, text='🍏({0}) {1}: {2}р.'.format(cart.quantity, cart.product, cart.price))
         else:
-            await bot.send_message(chat_id=manager_id,
+            await bot.send_message(chat_id=MANAGER,
                                    text='🍏{0}: {1}р.'.format(cart.product, cart.price))
     Order.create(user_id=msg.from_user.id)
     data = Order.select(fn.MAX(Order.id))
@@ -309,35 +317,39 @@ async def checkout_two(msg: types.Message):
     if msg.from_user.username is None:
         username = msg.from_user.url
 
-
-
-    await bot.send_message(chat_id=manager_id, text=f"🍎Итого: {sum(sum_price)}р.\n\n"
+    await bot.send_message(chat_id=MANAGER, text=f"🍎Итого: {sum(sum_price)}р.\n\n"
                                                    f"❗Номер заказа:№{numb}\nИмя пользователя: {username}\n"
                                                    f"Полное имя: {msg.from_user.full_name}\nid: {msg.from_user.id}")
     Cart.delete().where(Cart.user_id == msg.from_user.id).execute()
+
     await msg.answer('Отлично! Ваш заказ оформлен, в ближайшее время ваш личный менджер свяжется с вами для оплаты заказа!\n\n'
                      'Менеджер: @Arinocka_g', reply_markup=final_kb)
-    print(msg.from_user.username, msg.from_user.full_name)
 
 
-#администрирование
+# Администрирование
+
+
 @dp.message_handler(text=['Админка', 'админка'], state=MainStates)
 async def admin_panel(msg:types.Message, state: FSMContext):
-    if str(msg.from_user.id) in admins:
-        await bot.send_photo(chat_id=msg.from_user.id,
+    if str(msg.from_user.id) in ADMINS:
+        await bot.send_photo(
+                             chat_id=msg.from_user.id,
                              photo="https://chudo-prirody.com/uploads/posts/2021-08/1628909188_6-p-khitrii-kot-foto-6.jpg",
-                             reply_markup=upd_pinl(), caption='Какую позицию вы хотите изменить?')
+                             reply_markup=upd_pinl(), caption='Какую позицию вы хотите изменить?'
+        )
         await state.set_state(MainStates.admin_origin)
     else:
         await msg.answer('Нет доступа')
 
+
 @dp.callback_query_handler(text=['Назад к админке'], state=MainStates)
 async def admin_panel_dup(callback: None, state: FSMContext):
-    if str(callback.from_user.id) in admins:
+    if str(callback.from_user.id) in ADMINS:
         await admin_panel(callback, state)
         await state.set_state(MainStates.admin_origin)
     else:
         pass
+
 
 @dp.callback_query_handler(state=MainStates.admin_origin)
 async def admin_prod_page(callback: CallbackQuery, state=FSMContext):
@@ -354,26 +366,29 @@ async def admin_prod_page(callback: CallbackQuery, state=FSMContext):
             data['position'] = price_past_dict[data['product']]['Позиция']
         print(data['position'])
         try:
-            await bot.send_photo(chat_id=callback.from_user.id,
+            await bot.send_photo(
+                             chat_id=callback.from_user.id,
                              caption='Наименование: {0}\n\n🍏{1}\n\n🍏Количество на складе: {2}\n🍏Цена: {3}р.'.format(data['product'],
                                                                             price_past_dict[data['product']]['Описание'],
                                                                             price_past_dict[data['product']]['Количество'],
                                                                             price_past_dict[data['product']]['Цена']),
-                             photo=photo, reply_markup=admin_change)
+                             photo=photo, reply_markup=admin_change
+            )
         except Exception:
-            await bot.send_message(chat_id=callback.from_user.id,
+            await bot.send_message(
+                                 chat_id=callback.from_user.id,
                                  text='Наименование:{0}\n\n🍏{1}\n\n🍏Количество на складе: {2}\n🍏Цена: {3}р.'.format(data['product'],
                                                                             price_past_dict[data['product']]['Описание'],
                                                                             price_past_dict[data['product']]['Количество'],
                                                                             price_past_dict[data['product']]['Цена']),
-                                reply_markup=admin_change)
-
+                                 reply_markup=admin_change)
 
 
 @dp.callback_query_handler(text=['Изменить наименование'], state=MainStates.prod_page)
 async def admin_change_name_short(callback: CallbackQuery, state=FSMContext):
     await bot.send_message(chat_id=callback.from_user.id, text='Введите новое название для этой позиции')
     await state.set_state(MainStates.admin_change_name)
+
 
 @dp.message_handler(state=MainStates.admin_change_name)
 async def admin_change_name(msg: types.Message, state: FSMContext):
@@ -388,11 +403,11 @@ async def admin_change_name(msg: types.Message, state: FSMContext):
     await admin_panel(msg, state)
 
 
-
 @dp.callback_query_handler(text=['Изменить количество'], state=MainStates.prod_page)
 async def admin_change_quantity_short(callback: CallbackQuery, state=FSMContext):
     await bot.send_message(chat_id=callback.from_user.id, text='Введите новое количество для этой позиции')
     await state.set_state(MainStates.admin_change_quantity)
+
 
 @dp.message_handler(state=MainStates.admin_change_quantity)
 async def admin_change_quantity(msg: types.Message, state: FSMContext):
@@ -412,6 +427,7 @@ async def admin_change_name(callback: CallbackQuery, state=FSMContext):
     await bot.send_message(chat_id=callback.from_user.id, text='Введите новую цену для этой позиции')
     await state.set_state(MainStates.admin_change_price)
 
+
 @dp.message_handler(state=MainStates.admin_change_price)
 async def admin_change_name(msg: types.Message, state: FSMContext):
     data = await state.get_data()
@@ -424,10 +440,12 @@ async def admin_change_name(msg: types.Message, state: FSMContext):
     await state.set_state(MainStates.admin_origin)
     await admin_panel(msg, state)
 
+
 @dp.callback_query_handler(text=['Изменить описание'], state=MainStates.prod_page)
 async def admin_change_name(callback: CallbackQuery, state=FSMContext):
     await bot.send_message(chat_id=callback.from_user.id, text='Введите новое описание для этой позиции')
     await state.set_state(MainStates.admin_change_description)
+
 
 @dp.message_handler(state=MainStates.admin_change_description)
 async def admin_change_name(msg: types.Message, state: FSMContext):
