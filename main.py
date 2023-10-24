@@ -21,6 +21,7 @@ dp = Dispatcher(bot=bot, storage=storage)
 ADMINS = ADMINS
 MANAGER = MANAGER
 
+# Bot in TG: @fryts_bot
 
 with db:
     db.create_tables([User, Catalog, Cart, Order])

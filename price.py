@@ -13,8 +13,6 @@ def update_price_past_dict(message=None, callback=None):
                                              'Имя': Catalog.get(Catalog.id == 5).name, 'Позиция': 5, 'Описание': Catalog.get(Catalog.id == 5).description},
         Catalog.get(Catalog.id == 6).name : {'Количество': Catalog.get(Catalog.id == 6).quantity, 'Цена': Catalog.get(Catalog.id == 6).price,
                                              'Имя': Catalog.get(Catalog.id == 6).name, 'Позиция': 6, 'Описание': Catalog.get(Catalog.id == 6).description},
-        Catalog.get(Catalog.id == 7).name : {'Количество': Catalog.get(Catalog.id == 7).quantity, 'Цена': Catalog.get(Catalog.id == 7).price,
-                                             'Имя': Catalog.get(Catalog.id == 7).name, 'Позиция': 7, 'Описание': Catalog.get(Catalog.id == 7).description}
     }
     return price_past_dict
 def update_price_past_list(message=None, callback=None):
